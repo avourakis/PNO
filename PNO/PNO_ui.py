@@ -3,13 +3,11 @@ Author: Andres Vourakis
 Project Name: Pattis's Notes Organizer (PNO)
 Creation Date: April 3rd, 2015
 Version: 1.0
-Last Edited: April 4th, 2015
+Last Edited: April 6th, 2015
 Known bugs: 
-    1) It doesn't retrieve the last chapter of a file because it can't find the divider at the end. 
-       It needs to find EOF. It gets stuck in an infinite loop
-    2) It adds a divider in the list of titles because there are 3 consecutive dividers in the notes.
+    1) Doesn't recognize the section for lambdas as a chapter in review.txt
     
-Contributors: 
+Contributors: Nina Volkmuth
 '''
 
 #PNO_ui.py
@@ -23,36 +21,72 @@ This module is the user interface for the PNO online and offline versions.
 
 EQUALS_DIVIDER = '======================================'
 PLUS_DIVIDER = '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+COMMANDS = '''
+Commands:
+    r: read a file
+    c: convert a file to html
+    q: quit
+'''
 
 #PUBLIC FUNCTIONS
 
 def user_interface():
     ''' It prompts the user to enter information to generate the menu
     '''
+    banner()
     running = True
+    on = online.PNO_online()
     while running:
-        
-        banner()
-        address = input('Please enter the web address where the notes are located: ')
-        notesName = input('Please assign a name to these notes: ')
-        
-        on = online.PNO_online(address)
-        tList = on.chapt_titles(on.open_notes()) #List of titles
-        table_contents(notesName, tList)
-        
-        while True:
-            selection = input('Please choose a chapter you would like to read(Enter a number), enter q to quit, or r to restart: ')
-            if selection == 'q' or selection == 'Q':
-                running = quit_program()
-                break
-            if selection == 'r' or selection == 'R':
-                break
-            elif int(selection) >= 1 and int(selection) <= len(tList):
-                print_chapter(on.chapt_par(title_selected(int(selection), tList), on.open_notes()))
-            else:
-                print('Invalid input! Please try again. Try entering a number to select a chapter, enter q to quit the program, or r to restart the pogram')
+        print(COMMANDS)
+        command = input('Enter a command: ').lower()
+        if command == 'r':
+            read_file(on)
+        elif command == 'c':
+            convert_file(on)
+        elif command == 'q':
+            running = quit_program()
+        else:
+            print('Invalid input! Please try again.')
                     
+def read_file(on: online.PNO_online) -> None:
+    file = prompt_for_link(on)
+    notesName = input('Please assign a name to these notes: ')
+    tList, chapters = on.get_titles_and_chapters(file)
+    
+    while True:
+        table_contents(notesName, tList)
+        selection = input('Please choose a chapter you would like to read(Enter a number) or enter b to go back to the main menu: ').lower()
+        if selection == 'b':
+            running = quit_program()
+            break
+        try:
+            if int(selection) >= 1 and int(selection) <= len(tList):
+                print_chapter(chapters[int(selection) - 1])
+            else:
+                print('Invalid input! Please try again. Try entering a number to select a chapter or enter b to go back to the main menu')
+        except:
+            print('Invalid input! Please try again. Try entering a number to select a chapter or enter b to go back to the main menu')
         
+
+def convert_file(on: online.PNO_online) -> None:
+    file = prompt_for_link(on)
+    notesName = input('Please assign a name to these notes: ')
+    notesName += '.html'
+    print('Creating file...')
+    tList, chapters = on.get_titles_and_chapters(file)
+    on.create_html(notesName, tList, chapters)
+    print('Finished!')
+    
+def prompt_for_link(on: online.PNO_online) -> 'notes':
+    while True:
+        address = input('Please enter the web address where the notes are located: ')
+        notes = None
+        try:
+            notes = on.open_notes(address)
+            return notes
+        except:
+            print("Can't connect to address, Please enter a valid address")
+            
 def quit_program()->'False to end program':
     print('Thank you for using this program')
     return False
@@ -60,16 +94,13 @@ def quit_program()->'False to end program':
 def table_contents(name: 'Name to assign to notes', tList: 'List of titles'):
     print('\nTABLE OF CONTENTS: {}\n'.format(name))
     _print_titles(tList)
-    
+
 def print_chapter(chapter: 'Chapter Paragraph'):
     print('\nCHAPTER SELECTED:')
     print(PLUS_DIVIDER)
     print(chapter)
     print(PLUS_DIVIDER + '\n')
-    
-def title_selected(num: 'Title number', tList: 'List of titles')->'Selected title from menu':
-    return tList[num - 1]
-    
+
 def banner():
     print('\n' + EQUALS_DIVIDER)
     print('            Welcome to PNO')

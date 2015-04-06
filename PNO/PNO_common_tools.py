@@ -3,12 +3,10 @@ Author: Andres Vourakis
 Project Name: Pattis's Notes Organizer(PNO)
 Creation Date: April 3rd, 2015
 Version: 1.0
-Last Edited:
+Last Edited: April 6th, 2015
 Known bugs: 
-    1) It doesn't retrieve the last chapter of a file because it can't find the divider at the end. 
-       It needs to find EOF. It gets stuck in an infinite loop
-    2) It adds a divider in the list of titles because there are 3 consecutive dividers in the notes.
-Contributors: 
+    1) Doesn't recognize the section for lambdas as a chapter in review.txt
+Contributors: Nina Volkmuth
 '''
 
 #PNO_common_tools.py
@@ -47,7 +45,50 @@ class PNO_common_tools:
             ''' This section will assign known patterns entered by user to variables
             '''
             pass
-    
+
+    def read_file(self, file: 'file to scan') -> (['titles'], ['chapters']):
+        ''' Reads through a file once, splitting the titles and corresponding chapters
+            into two separate lists
+        '''
+        titles = ['Intro']
+        chapters = []
+        divider_found = False # First divider found
+        intro = ''
+
+        for line in file:
+            lineStr = self.decode_line(line)
+
+            # If the file doesn't start with a divider, count the first
+            #    section as the introduction
+            
+            if lineStr.rstrip() == self._divider.rstrip() or divider_found:
+                
+                # Adds the introduction as the first chapter
+                if len(chapters) == 0 and len(intro) > 0:
+                    chapters.append(intro)
+                    
+                next_line = file.readline()
+                dnext_line = self.decode_line(next_line) # Decoded next line
+                if dnext_line == self._eof:
+                    dnext_line = self.decode_line(file.readline())
+                if dnext_line.rstrip() != self._divider.rstrip():
+                    titles.append(dnext_line)
+                    paragraph = ''
+                    for test_line in file:
+                        test_line = self.decode_line(test_line)
+                        if test_line != self._divider:
+                            paragraph += test_line
+                        elif test_line.rstrip() == self._divider.rstrip():
+                            divider_found = True
+                            break
+                    chapters.append(paragraph)
+                    
+            elif not divider_found:
+                intro += lineStr
+        return (titles, chapters)
+
+    # Sorta optomized the following code above
+    """
     def find_chapt_titles(self, file: 'file to scan')->'Returns a list of titles':
         ''' Given an open file to scan it returns a list of titles found by following the patters.
         '''
@@ -73,7 +114,8 @@ class PNO_common_tools:
                     test_line = self.decode_line(file.readline())
                     if test_line != self._divider: paragraph += test_line #Stops reading lines when it finds divider
                     else: break
-        return paragraph 
+        return paragraph
+    """
                 
     
     def decode_line(self, line: 'Line to decode')->'Decoded Line':
@@ -88,4 +130,61 @@ class PNO_common_tools:
         '''
         return line + EMPTY_LINE
 
+class HTMLConverter():
+    
+    def __init__(self):
+        pass
+
+    def create_html_file(self, notesName, titles, chapters):
+        ''' Formats and creates an html file based off of the base file
+        '''
+        base = open('base.html', 'r')
+        out = open(notesName, 'w')
+        line = ''
+
+        # Sets up the page
+        while line != '<!-- Table of Contents -->\n':
+            line = base.readline()
+            if line == '<!-- Header -->\n':
+                line = base.readline()
+                out.write('<h2>{}</h2>'.format(notesName[:-5]))
+            out.write(line)
+
+        # Creates table of contents
+        out.write(self._create_ToC(titles))
+
+        # Creates chapters
+        i = 0
+        for t, c in zip(titles, chapters):
+            out.write(self._create_chapter(i, t, c))
+            i += 1
+
+        # End of the html file(mostly just closing tags)
+        while line != '<!-- End -->\n':
+            line = base.readline()
+            out.write(line)
+        base.close()
+        out.close()
+
+    def _create_ToC(self, titles) -> str:
+        ''' Creates the Table of Contents links, returning all the html as a str
+        '''
+        result = ''
+        for i, title in enumerate(titles):
+            result += self._create_link(i, str(i + 1) + " " + title.strip()) + '<br>'
+        return result
+
+    def _create_chapter(self, anchor, title, chapter) -> str:
+        ''' Puts in an html anchor at the top of each chapter followed by the title
+            and then the rest of the chapter. Returns all the html as a str
+        '''
+        result = '<a name="{}"></a><h1>{}</h1>'.format(anchor, title.strip())
+        for line in chapter.split('\n'):
+            result += line
+        return result
+
+    def _create_link(self, href, text) -> str:
+        ''' Creates a link based off of the href and text link text passed in as parameters
+        '''
+        return '<a href="#{}">{}</a>'.format(href, text)
                     
