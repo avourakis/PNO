@@ -76,7 +76,7 @@ class PNO_common_tools:
                     paragraph = ''
                     for test_line in file:
                         test_line = self.decode_line(test_line)
-                        if test_line != self._divider:
+                        if test_line.rstrip() != self._divider.rstrip():
                             paragraph += test_line
                         elif test_line.rstrip() == self._divider.rstrip():
                             divider_found = True
